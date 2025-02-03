@@ -26,14 +26,27 @@ func main() {
 	// Создаём gRPC-клиент Greeter
 	client := pb.NewGreeterClient(cc)
 
-	// Отправляем запрос
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
-	response, err := client.SayHello(ctx, &pb.HelloRequest{Name: "Alice"})
+	// Отправляем unary запрос
+	// response, err := client.SayHello(ctx, &pb.HelloRequest{Name: "Alice"})
+
+	// Отправляем streaming запрос
+	stream, err := client.StreamingGreetings(ctx, &pb.HelloRequest{Name: "Alice"})
 	if err != nil {
 		log.Fatalf("Error calling SayHello: %v", err)
 	}
 
-	fmt.Println("Server response:", response.Message)
+	for {
+		response, err := stream.Recv()
+		if err != nil {
+			if err.Error() == "EOF" {
+				log.Println("Stream closed by server.")
+				break
+			}
+			log.Fatalf("Error recieving message: %v", err)
+		}
+		fmt.Println("Server response:", response.Message)
+	}
 }
