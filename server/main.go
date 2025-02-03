@@ -11,6 +11,7 @@ import (
 	pb "github.com/daioru/grpc-go-example/proto"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 type greeterServer struct {
@@ -88,15 +89,22 @@ func (s *greeterServer) BidirectionalStreamGreetings(stream pb.Greeter_Bidirecti
 }
 
 func main() {
-	// Создаём слушателя на порту 50051
+	creds, err := credentials.NewServerTLSFromFile("server.crt", "server.key")
+	if err != nil {
+		log.Fatalf("Failed to load TLS keys: %v", err)
+	}
+
+	// Создаём gRPC-сервер с TLS
+	s := grpc.NewServer(grpc.Creds(creds))
+
+	// Регистрируем сервис
+	pb.RegisterGreeterServer(s, &greeterServer{})
+
+	// Запускаем сервер
 	lis, err := net.Listen("tcp", ":50051")
 	if err != nil {
 		log.Fatalf("Failed to listen: %v", err)
 	}
-
-	// Создаём gRPC-сервер
-	s := grpc.NewServer()
-	pb.RegisterGreeterServer(s, &greeterServer{})
 
 	log.Println("gRPC server is running on port 50051...")
 	if err := s.Serve(lis); err != nil {
