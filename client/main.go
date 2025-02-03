@@ -8,6 +8,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/metadata"
 )
 
 func main() {
@@ -30,8 +31,12 @@ func main() {
 	// Создаём gRPC-клиент
 	client := pb.NewGreeterClient(cc)
 
+	// Создаём контекст с токеном для авторизации
+	md := metadata.Pairs("authorization", "Bearer my-secret-token")
+	ctx := metadata.NewOutgoingContext(context.Background(), md)
+
 	// Отправляем запрос
-	response, err := client.SayHello(context.Background(), &pb.HelloRequest{Name: "Alice"})
+	response, err := client.SayHello(ctx, &pb.HelloRequest{Name: "Alice"})
 	if err != nil {
 		log.Fatalf("Error calling SayHello: %v", err)
 	}

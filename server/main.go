@@ -11,11 +11,34 @@ import (
 	pb "github.com/daioru/grpc-go-example/proto"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 )
 
 type greeterServer struct {
 	pb.UnimplementedGreeterServer
+}
+
+// Интерсептор для проверки токена
+func authInterceptor(
+	ctx context.Context,
+	req interface{},
+	info *grpc.UnaryServerInfo,
+	handler grpc.UnaryHandler,
+) (interface{}, error) {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return nil, status.Errorf(codes.Unauthenticated, "metadata not provided")
+	}
+
+	token := md["authorization"]
+	if len(token) == 0 || token[0] != "Bearer my-secret-token" {
+		return nil, status.Errorf(codes.Unauthenticated, "invalid token")
+	}
+
+	return handler(ctx, req)
 }
 
 // Unary RPC
@@ -95,7 +118,10 @@ func main() {
 	}
 
 	// Создаём gRPC-сервер с TLS
-	s := grpc.NewServer(grpc.Creds(creds))
+	s := grpc.NewServer(
+		grpc.Creds(creds),
+		grpc.UnaryInterceptor(authInterceptor),
+	)
 
 	// Регистрируем сервис
 	pb.RegisterGreeterServer(s, &greeterServer{})
