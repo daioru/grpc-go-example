@@ -11,6 +11,9 @@ service Greeter {
 
     // Server streaming RPC
     rpc StreamGreetings (HelloRequest) returns (stream HelloResponse);
+
+    // Client streaming RPC
+    rpc ClientStreamGreetings (stream HelloRequest) returns (HelloResponse);
 }
 
 // Описание запроса

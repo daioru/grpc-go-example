@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"time"
@@ -35,6 +36,27 @@ func (s *greeterServer) StreamGreetings(req *pb.HelloRequest, stream pb.Greeter_
 		time.Sleep(time.Second) //Задержка для иммитации потоковой передачи
 	}
 	return nil
+}
+
+// Client streaming RPC
+func (s *greeterServer) ClientStreamGreetings(stream pb.Greeter_ClientStreamGreetingsServer) error {
+	log.Println("Client started streaming...")
+
+	var names []string
+
+	for {
+		req, err := stream.Recv()
+		if err == io.EOF {
+			response := fmt.Sprintf("Hello to all: %v!", names)
+			return stream.SendAndClose(&pb.HelloResponse{Message: response})
+		}
+		if err != nil {
+			return fmt.Errorf("error recieving stream: %v", err)
+		}
+
+		log.Printf("Recieved: %s", req.Name)
+		names = append(names, req.Name)
+	}
 }
 
 func main() {

@@ -26,27 +26,27 @@ func main() {
 	// Создаём gRPC-клиент Greeter
 	client := pb.NewGreeterClient(cc)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-	defer cancel()
-
-	// Отправляем unary запрос
-	// response, err := client.SayHello(ctx, &pb.HelloRequest{Name: "Alice"})
-
-	// Отправляем streaming запрос
-	stream, err := client.StreamGreetings(ctx, &pb.HelloRequest{Name: "Alice"})
+	// Отправляем поток сообщений
+	stream, err := client.ClientStreamGreetings(context.Background())
 	if err != nil {
-		log.Fatalf("Error calling SayHello: %v", err)
+		log.Fatalf("Error creating stream: %v", err)
 	}
 
-	for {
-		response, err := stream.Recv()
+	names := []string{"Alice", "Bob", "Charlie", "Dave", "Eve"}
+
+	for _, name := range names {
+		fmt.Println("Sending:", name)
+		err := stream.Send(&pb.HelloRequest{Name: name})
 		if err != nil {
-			if err.Error() == "EOF" {
-				log.Println("Stream closed by server.")
-				break
-			}
-			log.Fatalf("Error recieving message: %v", err)
+			log.Fatalf("Error sending message: %v", err)
 		}
-		fmt.Println("Server response:", response.Message)
+		time.Sleep(time.Second)
 	}
+
+	response, err := stream.CloseAndRecv()
+	if err != nil {
+		log.Fatalf("Error recieving response: %v", err)
+	}
+
+	fmt.Println("Server response:", response.Message)
 }
