@@ -23,7 +23,7 @@ func (s *greeterServer) SayHello(ctx context.Context, req *pb.HelloRequest) (*pb
 }
 
 // Server streaming RPC
-func (s *greeterServer) StreamingGreetings(req *pb.HelloRequest, stream pb.Greeter_StreamingGreetingsServer) error {
+func (s *greeterServer) StreamingGreetings(req *pb.HelloRequest, stream pb.Greeter_StreamGreetingsServer) error {
 	log.Printf("Reciever request from: %s", req.Name)
 
 	for i := 1; i <= 5; i++ {

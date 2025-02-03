@@ -33,7 +33,7 @@ func main() {
 	// response, err := client.SayHello(ctx, &pb.HelloRequest{Name: "Alice"})
 
 	// Отправляем streaming запрос
-	stream, err := client.StreamingGreetings(ctx, &pb.HelloRequest{Name: "Alice"})
+	stream, err := client.StreamGreetings(ctx, &pb.HelloRequest{Name: "Alice"})
 	if err != nil {
 		log.Fatalf("Error calling SayHello: %v", err)
 	}

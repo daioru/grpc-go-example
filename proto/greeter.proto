@@ -10,7 +10,7 @@ service Greeter {
     rpc SayHello (HelloRequest) returns (HelloResponse);
 
     // Server streaming RPC
-    rpc StreamingGreetings (HelloRequest) returns (stream HelloResponse);
+    rpc StreamGreetings (HelloRequest) returns (stream HelloResponse);
 }
 
 // Описание запроса
