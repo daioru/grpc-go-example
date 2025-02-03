@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"log"
-	"time"
+	"os"
 
 	pb "github.com/daioru/grpc-go-example/proto"
 
@@ -26,27 +28,43 @@ func main() {
 	// Создаём gRPC-клиент Greeter
 	client := pb.NewGreeterClient(cc)
 
-	// Отправляем поток сообщений
-	stream, err := client.ClientStreamGreetings(context.Background())
+	// Открываем двусторонний поток
+	stream, err := client.BidirectionalStreamGreetings(context.Background())
 	if err != nil {
 		log.Fatalf("Error creating stream: %v", err)
 	}
 
-	names := []string{"Alice", "Bob", "Charlie", "Dave", "Eve"}
+	done := make(chan struct{})
 
-	for _, name := range names {
-		fmt.Println("Sending:", name)
+	go func() {
+		for {
+			resp, err := stream.Recv()
+			if err != nil {
+				if err == io.EOF {
+					log.Println("Server closed the connection.")
+					close(done)
+					return
+				}
+				log.Fatalf("error recieving response: %v", err)
+			}
+			fmt.Println("Server response:", resp.Message)
+		}
+	}()
+
+	scanner := bufio.NewScanner(os.Stdin)
+	fmt.Println("Enter names (type 'exit' to quit):")
+	for scanner.Scan() {
+		name := scanner.Text()
+		if name == "exit" {
+			break
+		}
+
 		err := stream.Send(&pb.HelloRequest{Name: name})
 		if err != nil {
-			log.Fatalf("Error sending message: %v", err)
+			log.Fatalf("error sending message: %v", err)
 		}
-		time.Sleep(time.Second)
 	}
 
-	response, err := stream.CloseAndRecv()
-	if err != nil {
-		log.Fatalf("Error recieving response: %v", err)
-	}
-
-	fmt.Println("Server response:", response.Message)
+	stream.CloseSend()
+	<-done
 }

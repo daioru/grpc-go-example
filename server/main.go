@@ -59,7 +59,36 @@ func (s *greeterServer) ClientStreamGreetings(stream pb.Greeter_ClientStreamGree
 	}
 }
 
+// Bidirectional streaming RPC
+func (s *greeterServer) BidirectionalStreamGreetings(stream pb.Greeter_BidirectionalStreamGreetingsServer) error {
+	log.Println("Client started bidirectional streaming...")
+
+	for {
+		// Получаем сообщение от клиента
+		req, err := stream.Recv()
+		if err == io.EOF {
+			log.Println("Client finished sending messages.")
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("error recieving message: %v", err)
+		}
+
+		log.Printf("Recieved: %s", req.Name)
+
+		// Отправляем ответ клиенту
+		response := fmt.Sprintf("Hello, %s!", req.Name)
+		err = stream.Send(&pb.HelloResponse{Message: response})
+		if err != nil {
+			return fmt.Errorf("error sending response: %v", err)
+		}
+
+		time.Sleep(time.Second) // Иммитация задержки ответа
+	}
+}
+
 func main() {
+	// Создаём слушателя на порту 50051
 	lis, err := net.Listen("tcp", ":50051")
 	if err != nil {
 		log.Fatalf("Failed to listen: %v", err)
