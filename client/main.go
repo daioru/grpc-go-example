@@ -28,18 +28,28 @@ func main() {
 	}
 	defer cc.Close()
 
-	// Создаём gRPC-клиент
-	client := pb.NewGreeterClient(cc)
+	// Создаём клиент AuthService
+	authClient := pb.NewAuthServiceClient(cc)
+	greeterClient := pb.NewGreeterClient(cc)
 
-	// Создаём контекст с токеном для авторизации
-	md := metadata.Pairs("authorization", "Bearer my-secret-token")
+	loginResp, err := authClient.Login(context.Background(), &pb.LoginRequest{
+		Username: "admin",
+		Password: "password123",
+	})
+	if err != nil {
+		log.Fatalf("Login failed: %v", err)
+	}
+
+	token := loginResp.Token
+	log.Println("Recieved JWT Token:", token)
+
+	md := metadata.New(map[string]string{"authorization": token})
 	ctx := metadata.NewOutgoingContext(context.Background(), md)
 
-	// Отправляем запрос
-	response, err := client.SayHello(ctx, &pb.HelloRequest{Name: "Alice"})
+	resp, err := greeterClient.SayHello(ctx, &pb.HelloRequest{Name: "John"})
 	if err != nil {
 		log.Fatalf("Error calling SayHello: %v", err)
 	}
 
-	log.Println("Server response:", response.Message)
+	log.Println("Server Response:", resp.Message)
 }

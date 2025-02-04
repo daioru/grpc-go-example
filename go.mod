@@ -3,6 +3,8 @@ module github.com/daioru/grpc-go-example
 go 1.23.5
 
 require (
+	github.com/golang-jwt/jwt/v5 v5.2.1
+	github.com/joho/godotenv v1.5.1
 	google.golang.org/grpc v1.70.0
 	google.golang.org/protobuf v1.36.4
 )

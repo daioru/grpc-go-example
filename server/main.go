@@ -21,20 +21,51 @@ type greeterServer struct {
 	pb.UnimplementedGreeterServer
 }
 
-// Интерсептор для проверки токена
-func authInterceptor(
+// Middleware для проверки API токена
+// func authInterceptor(
+// 	ctx context.Context,
+// 	req interface{},
+// 	info *grpc.UnaryServerInfo,
+// 	handler grpc.UnaryHandler,
+// ) (interface{}, error) {
+// 	md, ok := metadata.FromIncomingContext(ctx)
+// 	if !ok {
+// 		return nil, status.Errorf(codes.Unauthenticated, "metadata not provided")
+// 	}
+
+// 	token := md["authorization"]
+// 	if len(token) == 0 || token[0] != "Bearer my-secret-token" {
+// 		return nil, status.Errorf(codes.Unauthenticated, "invalid token")
+// 	}
+
+// 	return handler(ctx, req)
+// }
+
+// Middleware для проверки JWT токена
+func jwtInterceptor(
 	ctx context.Context,
 	req interface{},
 	info *grpc.UnaryServerInfo,
 	handler grpc.UnaryHandler,
 ) (interface{}, error) {
+	if info.FullMethod == "/proto.AuthService/Login" {
+		return handler(ctx, req)
+	}
+
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		return nil, status.Errorf(codes.Unauthenticated, "metadata not provided")
 	}
 
-	token := md["authorization"]
-	if len(token) == 0 || token[0] != "Bearer my-secret-token" {
+	tokenList := md["authorization"]
+	if len(tokenList) == 0 {
+		return nil, status.Errorf(codes.Unauthenticated, "authorization token not provided")
+	}
+
+	tokenString := tokenList[0]
+
+	token, err := validateJWT(tokenString)
+	if err != nil || !token.Valid {
 		return nil, status.Errorf(codes.Unauthenticated, "invalid token")
 	}
 
@@ -120,11 +151,12 @@ func main() {
 	// Создаём gRPC-сервер с TLS
 	s := grpc.NewServer(
 		grpc.Creds(creds),
-		grpc.UnaryInterceptor(authInterceptor),
+		grpc.UnaryInterceptor(jwtInterceptor),
 	)
 
-	// Регистрируем сервис
+	// Регистрируем сервисы
 	pb.RegisterGreeterServer(s, &greeterServer{})
+	pb.RegisterAuthServiceServer(s, &authService{})
 
 	// Запускаем сервер
 	lis, err := net.Listen("tcp", ":50051")
@@ -132,7 +164,7 @@ func main() {
 		log.Fatalf("Failed to listen: %v", err)
 	}
 
-	log.Println("gRPC server is running on port 50051...")
+	log.Println("gRPC server with JWT authentification is running on port 50051...")
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("Failed to serve: %v", err)
 	}
